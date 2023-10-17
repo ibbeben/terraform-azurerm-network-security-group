@@ -98,7 +98,24 @@ resource "azurerm_network_security_rule" "custom_rules" {
   source_port_range                          = lookup(var.custom_rules[count.index], "source_port_range", "*") == "*" ? "*" : null
   source_port_ranges                         = lookup(var.custom_rules[count.index], "source_port_range", "*") == "*" ? null : [for r in split(",", var.custom_rules[count.index].source_port_range) : trimspace(r)]
 
-  lifecycle {
+# Restrict SSH access from the internet
+resource "azurerm_network_security_rule" "restrict_ssh" {
+  name                        = "Restrict-SSH-Access"
+  priority                    = 1100
+  direction                   = "Inbound"
+  access                      = "Deny"
+  protocol                    = "Tcp"
+  source_port_ranges          = ["*"]
+  destination_port_range      = "22"
+  description                 = "Restrict SSH access from the internet"
+  source_address_prefix       = ["Internet"]
+  destination_address_prefix  = ["*"]
+  resource_group_name         = azurerm_resource_group.nsg.name
+  network_security_group_name = azurerm_network_security_group.nsg.name
+}
+
+
+lifecycle {
     precondition {
       condition     = try(var.custom_rules[count.index].priority >= 100 && var.custom_rules[count.index].priority <= 4096, false)
       error_message = "Precondition failed: 'predefined_rules.priority' must be provided and configured between 100 and 4096 for custom rules."
